@@ -1,4 +1,5 @@
 # nth roots of unity / complex numbers
+# mostly to get some intuition around the polar representations
 
 from math import *
 from cmath import *

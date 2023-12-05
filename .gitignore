@@ -162,3 +162,5 @@ cython_debug/
 /.roots.py.~undo-tree~
 /.README.md.~undo-tree~
 /.dataclass.py.~undo-tree~
+/analyseAeron.py~
+/.analyseAeron.py.~undo-tree~

@@ -1,4 +1,6 @@
 import numpy as np
+import time
+from datetime import datetime
 
 """
 
@@ -26,43 +28,42 @@ aeron-common/src/main/java/uk/co/real_logic/aeron/common/CncFileDescriptor.java
 """
 
 metaData = [
-    ('toDriversLength'    , np.int32),
-    ('toClientsLength'    , np.int32),
+    ('toDriversLength', np.int32),
+    ('toClientsLength', np.int32),
     ('counterLabelsLength', np.int32),
     ('counterValuesLength', np.int32)
     ]
 
 thaip = np.dtype([
     ('cncVersion', np.int32),
-    ('metaData'  , metaData),
+    ('metaData', metaData),
 ])
 
 fn = '/dev/shm/aeron/conductor/cnc'
 
-labelThaip = np.dtype( [ ('length', np.uint32),
-                         ('label', 'S1020') ] )
+labelThaip = np.dtype([('length', np.uint32),
+                       ('label', 'S1020')])
 
 #orking around a bug
 
 driverTrailer = np.dtype([
-    ('tailCounter' , np.int64),
+    ('tailCounter', np.int64),
     ('ign1', 'S56'),
-    ('headCounter' , np.int64),
+    ('headCounter', np.int64),
     ('ign2', 'S56'),
     ('correlationCounter', np.int64),
     ('ign3', 'S56'),
-    ('consumerHeartbeat' , np.int64),
-    ('ign4', 'S56')
-    ] )
+    ('consumerHeartbeat', np.int64),
+    ('ign4', 'S56')])
 
-driverThaip = np.dtype( [
+driverThaip = np.dtype([
     ('data', np.int8, 1024 * 1024),
-    ('trailer', driverTrailer) ] )
+    ('trailer', driverTrailer)])
 
-mm = memmap( fn, dtype = thaip, mode = 'r', shape = (1,) )[0]
+mm = np.memmap(fn, dtype=thaip, mode='r', shape=(1,))[0]
 md = mm['metaData']
 numLabels = md['counterLabelsLength'] / labelThaip.itemsize
-numValues = md['counterValuesLength'] / labelThaip.itemsize #Danger - w
+numValues = md['counterValuesLength'] / labelThaip.itemsize # Danger - w
 toDriverOffset = thaip.itemsize
 toClientOffset = toDriverOffset + md['toDriversLength']
 
@@ -70,65 +71,47 @@ labelOffset = thaip.itemsize + \
               md['toDriversLength'] + \
               md['toClientsLength']
 
-valueOffset =  labelOffset + md['counterLabelsLength']
+valueOffset = labelOffset + md['counterLabelsLength']
 
-driver = memmap(fn, dtype = driverThaip,
-                mode = 'readonly',
-                shape = 1,
-                offset = toDriverOffset)[0]
+driver = np.memmap(fn, dtype=driverThaip,
+                   mode='readonly',
+                   shape=1,
+                   offset=toDriverOffset)[0]
 
-labels = memmap( fn,
-                 dtype = labelThaip,
-                 mode = 'r',
-                 shape = (numLabels,) ,
-                 offset = labelOffset
-                 )
+labels = np.memmap(fn,
+                   dtype=labelThaip,
+                   mode='r',
+                   shape=(numLabels,),
+                   offset=labelOffset)
 
-values = memmap( fn,
-                 dtype = np.int64,
-                 mode = 'r',
-                 shape = (numValues,) ,
-                 offset = valueOffset
-                 )
-
-
+values = np.memmap(fn,
+                   dtype=np.int64,
+                   mode='r',
+                   shape=(numValues,),
+                   offset=valueOffset)
 
 
 rbHeader = np.dtype([
     ('length', np.int32),
-    ('thaip' , np.int32)
+    ('thaip', np.int32)
     ])
 
 
 for x,y in zip(labels[:35], values[:35]):
-    print x[1][:x[0]], y
+    print(x[1][:x[0]], y)
 
 
-print md
-print driverThaip.itemsize
+print(md)
+print(driverThaip.itemsize)
 
-import time
-from datetime import datetime
 
 while True:
-    print driver['trailer']
-    datetime.now(), time.sleep(0.2)
-    
+    print(driver['trailer'])
+    time.sleep(0.2)
 
-
-
-
-
-
-
-
-
-
-
-    
 """
 # Here's what I get 
-## memmap([(1, (1048832, 1048704, 67108864, 67108864))], 
+## np.memmap([(1, (1048832, 1048704, 67108864, 67108864))], 
 ##       dtype=[('cncVersion', '<i4'), ('metaData', [('toDriversLength', '<i4'), ('toClientsLength', '<i4'), ('counterLabelsLength', '<i4'), ('counterValuesLength', '<i4')])])
 
 First Field

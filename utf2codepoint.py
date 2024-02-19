@@ -1,5 +1,3 @@
-
-
 masks = [0x7F, 0x1F, 0x0F, 0x07]
 
 for example in [0x3f,0xC0, 0x80, 0xE0, 0xF0, 0x80, 0x800, 0x10000,0x110000 ] + masks:
@@ -7,7 +5,7 @@ for example in [0x3f,0xC0, 0x80, 0xE0, 0xF0, 0x80, 0x800, 0x10000,0x110000 ] + m
 
 def utf8_to_code_point(byte_sequence):
     # Determine the number of bytes used for the character
-    num_bytes = len(byte_sequence)
+    num_bytes = len(byte_sequence) # <-- Cheating. Doesn't deal with streaming.
     
     # Determine the bitmask for extracting the bits representing the character
     bitmask = masks[num_bytes - 1]

@@ -1,7 +1,9 @@
+
+
 masks = [0x7F, 0x1F, 0x0F, 0x07]
 
-for example in [0x3f,0xC0, 0x80, 0xE0, 0xF0] + masks:
-    print(f"{example:>02x} = {example:>08b}")
+for example in [0x3f,0xC0, 0x80, 0xE0, 0xF0, 0x80, 0x800, 0x10000,0x110000 ] + masks:
+    print(f"{example:>06x} = {example:>021b}")
 
 def utf8_to_code_point(byte_sequence):
     # Determine the number of bytes used for the character
@@ -24,11 +26,21 @@ def utf8_to_code_point(byte_sequence):
 # e0 = 11100000 -> Mask for start of three byte messag
 # f0 = 11110000 -> Mark for start of four byte message
 # 80 = 10000000 -> Mask for an declaring extension byte - 'or' me with remaining 0x3f
-
 # 7f = 01111111 -> Bitmask for byte 1 of 1 byte message - header = 0 - i.e. 7 bit ascii
 # 1f = 00011111 -> Bitmask for byte 1 of 2 byte message - header = 110
 # 0f = 00001111 -> Bitmask for byte 1 of 3 byte message - header = 1110
 # 07 = 00000111 -> Bitmask for byte 1 of 4 byte message - header = 11110
+
+
+# Leading bits: The leading bits of the first byte of a UTF-8 sequence determine the total number of bytes used to encode a character. There are several patterns:
+
+# For a single-byte character (code points U+0000 to U+007F),  the leading bit is always 0.
+# For a two-byte character (code points U+0080 to U+07FF),     the leading three bits are 110.
+# For a three-byte character (code points U+0800 to U+FFFF),   the leading four bits are 1110.
+# For a four-byte character (code points U+10000 to U+10FFFF), the leading five bits are 11110.
+
+#Maximum code point value: This constant represents the highest Unicode code point that can be encoded in UTF-8. In UTF-8, the highest code point allowed is U+10FFFF.
+
 
 def code_point_to_utf8(code_point):
     if code_point < 0x80:

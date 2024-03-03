@@ -20,9 +20,10 @@ def mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter):
 
     return mandelbrot_grid
 
-def plot_mandelbrot(xmin, xmax, ymin, ymax, width, height, max_iter):
+def plot_mandelbrot(xmin, xmax, ymin, ymax, width, height, max_iter, cmap):
     mandelbrot_grid = mandelbrot_set(xmin, xmax, ymin, ymax, width, height, max_iter)
-    plt.imshow(mandelbrot_grid.T, extent=(xmin, xmax, ymin, ymax))
+    plt.imshow(mandelbrot_grid.T, extent=(xmin, xmax, ymin, ymax), cmap=cmap)
+    plt.colorbar(label='Iterations')
     plt.xlabel('Re(c)')
     plt.ylabel('Im(c)')
     plt.title('Mandelbrot Set')
@@ -33,6 +34,7 @@ xmin, xmax = -2, 2
 ymin, ymax = -2, 2
 width, height = 800, 800
 max_iter = 100
+cmap = 'inferno'  # Change colormap here
 
 # Plot Mandelbrot set
-plot_mandelbrot(xmin, xmax, ymin, ymax, width, height, max_iter)
+plot_mandelbrot(xmin, xmax, ymin, ymax, width, height, max_iter, cmap)

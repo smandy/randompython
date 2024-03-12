@@ -16,3 +16,8 @@ ls_bits = 53160
 # Out[93]: 1710215080
 
 print( ( (ms_bits << EMACS_LSBITS ) & MSB_MASK) | ls_bits & LSB_MASK)
+
+# Woot!
+#In [285]: datetime.utcfromtimestamp(1710215080)
+#Out[285]: datetime.datetime(2024, 3, 12, 3, 44, 40)
+

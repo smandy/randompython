@@ -79,7 +79,7 @@ class Board:
         for q,v in self.coords.items():
             v[2] = self.adjecentZones(q)
         self.movesMade = movesMade
-        self.movesToMake = [ self.availableMoves() ]
+        self.movesToMake = [ self.pruneMoves(self.availableMoves()) ]
         
     def isValid(self):
         pass
@@ -138,34 +138,31 @@ class Board:
         return poisonList
         
 
-    def pruneMoves(self, am1):
-        am = { q:v for q,v in am1}
-        coords = am.keys()
-        bad = []
-        
-        for quay in coords:
-            moves1 = am[quay]
-            adjs = self.adjacents(quay)
-            for adj in adjs:
-                if adj in am:
-                    moves2 = am[adj]
-                    contradiction = moves1.intersection(moves2)
-                    for x in contradiction:
-                        bad.append( (f"{quay}->{moves1} {adj}->{moves2} {contradiction}", quay, adj, contradiction))
+    def pruneMoves(self, am):
+        verboten = set()
 
-        for s, c1, c2, contradiction in bad:
-            am[c1] -= contradiction
-            #am[c2] -= contradiction
-        print(f"Final dict {am}")
-            
-    
+        filtered = []
+
+        for coord,moves in am:
+            current = (coord, set())
+            for move in moves:
+                if not (coord, move) in verboten:
+                    current[1].add(move)
+                    for adj in self.adjacents(coord):
+                        verboten.add( (adj, move))
+            if current[1]:
+                filtered.append(current)
+        filtered.sort( key = lambda x: len(x[1]) )
+        #self.debug(f"verboten\n{verboten}\nfiltered\n{pprint.pformat(filtered)}")
+        return filtered
+
     def availableMoves(self):
         ret =  []
+        rd = {}
         es = self.emptySquares()
         # Phase 1 - poison 
-        poisonList = self.poison(es)
-
-        self.debug(f"Poisonlist is {pprint.pformat(poisonList)}")
+        #poisonList = self.poison(es)
+        #self.debug(f"Poisonlist is {pprint.pformat(poisonList)}")
 
         for z,val in es.items():
             zone = val[1]
@@ -176,11 +173,13 @@ class Board:
             forbidden = { self.coords[x][0] for x in adj if self.coords[x][0] }
 
             impossibleSquares = []
-            finalMoves = za - forbidden - poisonList[z]
+            finalMoves = za - forbidden
+            self.debug(f"finalMoves={finalMoves}")
             if finalMoves:
                 ret.append((z, finalMoves))
+                rd[z] = finalMoves
             else:
-                impossibleSquares.append(f"Danger - impossible square {z} za={za} poison={poisonList[z]} forbidden={forbidden}")
+                impossibleSquares.append(f"Danger - impossible square {z} za={za}")
 
                 # Short circuit the process - if there are 'broken' squares
                 # then we shouldn't consider there to be *any* valid moves.
@@ -188,7 +187,7 @@ class Board:
             if impossibleSquares:
                 print(f"Impossible squares -\n{pprint.pformat(impossibleSquares)}")
                 return []
-            self.debug(f"z={z} za={za} forbidden={forbidden} finalMoves={finalMoves}")
+            #self.debug(f"z={z} za={za} forbidden={forbidden} finalMoves={finalMoves}")
 
 
         # Every empty square should have an available move
@@ -196,13 +195,15 @@ class Board:
             
         ret =  sorted(ret,key = lambda x: (len(x[1]) , len(self.coords[x[0]][2])))
 
-        #self.pruneMoves(ret)
+        
         return ret
 
 
     def sanityCheck(self):
         # 2 main checks - no invalid adjacents - no overpopulated zones
 
+
+        
         for z in self.coords:
             if not self.coords[z][0]:
                 continue
@@ -215,7 +216,7 @@ class Board:
         for coord, move in self.movesMade:
             stats[coord] += 1
         for a,b in stats.items():
-            assert b in [0,1], f"Duplicate move {coord}"
+            assert b in [0,1], f"Duplicate move {a} {b}"
 
         # Zone stats
         for zone, coords in self.zones.items():
@@ -234,6 +235,9 @@ class Board:
                 moves = [ x for x in self.movesMade if x== (coord,val[0])]
                 assert len(moves)==1, f"Inconsistent movesmade c={coord} v={val} mm={self.movesMade} {moves}"
 
+        # Hygeine
+        assert self.movesToMake[-1], f"Bad moves to make {self.movesToMake}"
+
     def adjecentZones(self, coord):
         zone = self.coords[coord][1]
         adj = [ x for x in self.adjacents(coord) if not self.coords[x][1] == zone ]
@@ -243,12 +247,13 @@ class Board:
     def doWork(self):
         if self.movesToMake[-1]:
             if self.movesToMake[-1][0][1]:
-                #print("Make move")
+                self.debug("dowork: Make move")
                 self.makeMove()
             else:
+                self.dbeug( "doWork: prune movesToMake")
                 self.movesToMake[-1] = self.movesToMake[-1][1:]
         else:
-            print("Backtrack")
+            self.debug("doWork: Backtracking")
             self.backTrack()
             self.movesToMake.pop()
         self.sanityCheck()
@@ -272,9 +277,9 @@ class Board:
     def makeMove(self):
         #toMove = [ x for x in self.movesToMake[-1] if len( x[1] ) == 1]
         #print(f"toMove is {pprint.pformat(toMove)}")
-
         coord, moveSet = self.movesToMake[-1][0]
 
+        assert moveSet, "Empty moveset!"
         if coord == (6,4) and self.running and False:
             print("Debug breakpoint")
             self.running = False
@@ -284,30 +289,34 @@ class Board:
         move = moveSet.pop()
         if not moveSet:
             self.movesToMake[-1] = self.movesToMake[-1][1:]
+            if not self.movesToMake[-1]:
+                self.movesToMake = self.movesToMake[:-1]
+        self.debug(f"makemove final moveset {moveSet}")
 
         # Make the actual move
         self.debug(f"makeMove {coord} -> {move}")
-        self.coords[coord][0] = move
-        self.movesMade.append( (coord, move))
+
+        existing = self.coords[coord][0]
+        assert existing in [0,move], f"Try to set populated square {coord}->{move} vs existing={existing}"
+        if existing == 0:
+            self.coords[coord][0] = move
+            self.movesMade.append( (coord, move))
 
         # Not restrictive enough - need to check available moves for empty square
         am = self.availableMoves()
         amCords = {x[0] for x in am}
         es = self.emptySquares()
+        # badSquares = []
+        # #self.debug(f"amCords={amCords} am={am}")
+        # for (coord2, val) in es.items():
+        #     if not coord2 in amCords:
+        #         self.debug(f"badSquare coord={coord2}")
+        #         badSquares.append(coord2)
+        # if badSquares:
+        #     print(f"Bad squares (can't move) after move {coord}->{move}\n{pprint.pformat(badSquares)}")
 
-        badSquares = []
-
-        self.debug(f"amCords={amCords} am={am}")
-        
-        for (coord2, val) in es.items():
-            #self.debug(f"coord={coord} am={pprint.pformat(am)}")
-            if not coord2 in amCords:
-                badSquares.append(coord2)
-        if badSquares:
-            print(f"Bad squares (can't move) after move {coord}->{move}\n{pprint.pformat(badSquares)}")
-
-            self.backTrack()
-            return
+        #     self.backTrack()
+        #     return
 
         
 
@@ -358,10 +367,13 @@ if __name__ == '__main__' or True:
 
     pl.clf()
 
+    count = 0
     def iter():
+        global count
         board.doWork()
         pl.clf()
         board.plot()
+        count += 1
 
     def multIter(n):
         for i in range(n):
@@ -378,7 +390,7 @@ if __name__ == '__main__' or True:
     board.plot()
 
     
-    #multIter(5)
+    multIter(84)
     board.verbose = True
     
 

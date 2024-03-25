@@ -3,7 +3,8 @@ from pprint import pprint as pp
 import pylab as pl
 import numpy as np
 import copy as cp
-import pprint 
+import pprint
+import functools
 
 board = """
 1 1 3 3
@@ -50,7 +51,7 @@ class Board:
     def parse(cls, s, initState):
         lines = s.split("\n")[1:-1]
         lines = [x.replace(' ', '') for x in lines]
-        assert size( { size(x) for x in lines } ) == 1, "Dodgy board"
+        assert len( { len(x) for x in lines } ) == 1, "Dodgy board"
         #print(lines)
         zones = collections.defaultdict(list)
         coords = {}
@@ -59,9 +60,11 @@ class Board:
                 x = parseInt(x)
                 #print((i, j, x))
                 zones[x].append((i, j))
-                coords[ (i,j)] = [0, x, None]
+                # current, zone, zones, zoneSet, 'can be'
+                coords[ (i,j)] = [0, x, None, None, None]
 
 
+                
         movesMade = []
         for i,j,val in initState:
             coords[(i,j)][0] = val
@@ -78,8 +81,28 @@ class Board:
         self.zones = zones # List of (row,col) tuples
         for q,v in self.coords.items():
             v[2] = self.adjecentZones(q)
+            v[3] = set(range(len(self.zones[v[1]] )))
+
         self.movesMade = movesMade
-        self.movesToMake = [ self.pruneMoves(self.availableMoves()) ]
+
+        avail = self.availableMoves()
+        newMoves = self.pruneMoves(avail)
+        debug = [ x for x in newMoves if x[0] == (7,0) ]
+        print(f"DEBUG: new 70's\n{debug}")
+        
+        #print(f"avail={len(avail)} pruned={len(pruned)}")
+        #self.pruneMoves(self.availableMoves())
+
+        #moveCoords = {x[0] for x in self.movesToMake}
+        #newMoves = [ x for x in newMoves if not x[0] in moveCoords]
+        self.movesToMake = newMoves
+
+    def flatten(self, m2m):
+        ret = []
+        for (coord, moveSet) in m2m:
+            for move in moveSet:
+                ret.append( (coord, move) )
+        return ret
         
     def isValid(self):
         pass
@@ -139,21 +162,19 @@ class Board:
         
 
     def pruneMoves(self, am):
-        verboten = set()
-
+        verboten = set(self.movesMade)
+        verbotenCoords = { x[0] for x in self.movesMade }
         filtered = []
+        for x in am:
+            (coord, move ) = x
+            if not x in verboten and not x[0] in verbotenCoords:
+                filtered.append(x)
+                for adj in self.adjacents(coord):
+                    verboten.add( (adj, move))
 
-        for coord,moves in am:
-            current = (coord, set())
-            for move in moves:
-                if not (coord, move) in verboten:
-                    current[1].add(move)
-                    for adj in self.adjacents(coord):
-                        verboten.add( (adj, move))
-            if current[1]:
-                filtered.append(current)
-        filtered.sort( key = lambda x: len(x[1]) )
-        #self.debug(f"verboten\n{verboten}\nfiltered\n{pprint.pformat(filtered)}")
+                verboten.add( (coord,move))
+                verbotenCoords.add( coord)
+        print(f"Filtered {filtered}")
         return filtered
 
     def availableMoves(self):
@@ -174,7 +195,7 @@ class Board:
 
             impossibleSquares = []
             finalMoves = za - forbidden
-            self.debug(f"finalMoves={finalMoves}")
+            #self.debug(f"finalMoves={finalMoves}")
             if finalMoves:
                 ret.append((z, finalMoves))
                 rd[z] = finalMoves
@@ -193,17 +214,25 @@ class Board:
         # Every empty square should have an available move
         
             
-        ret =  sorted(ret,key = lambda x: (len(x[1]) , len(self.coords[x[0]][2])))
+        ret =  sorted(ret,key = lambda x: (len(x[1]) , - len(self.coords[x[0]][2])))
 
+        ret2 = self.flatten(ret)
+
+        debug = [ x for x in ret2 if x[0] == (7,0) ]
+        print(f"DEBUG: incremental new 70's\n{debug}")
         
-        return ret
+        return ret2
 
 
     def sanityCheck(self):
-        # 2 main checks - no invalid adjacents - no overpopulated zones
 
 
+        # Debug - find (7,0)
+        debug = [ x for x in self.movesToMake if x[0] == (0,7)]
+        if debug:
+            print(f"DEBUG: 70's\n{pprint.pformat(debug)}")
         
+        # 2 main checks - no invalid adjacents - no overpopulated zones
         for z in self.coords:
             if not self.coords[z][0]:
                 continue
@@ -226,7 +255,7 @@ class Board:
                 if v != 0:
                     stats[v] += 1
             badVals = [ x for x in stats.items() if x[1] not in {0,1} ]
-            assert not badVals, f"Zone violation! {badVals}"
+            assert not badVals, f"Zone violation for zone={zone} stat={badVals}"
 
         # Consistency between movesmade and coords
 
@@ -236,7 +265,7 @@ class Board:
                 assert len(moves)==1, f"Inconsistent movesmade c={coord} v={val} mm={self.movesMade} {moves}"
 
         # Hygeine
-        assert self.movesToMake[-1], f"Bad moves to make {self.movesToMake}"
+        #assert self.movesToMake[-1], f"Bad moves to make {self.movesToMake}"
 
     def adjecentZones(self, coord):
         zone = self.coords[coord][1]
@@ -245,19 +274,20 @@ class Board:
         return zones
             
     def doWork(self):
-        if self.movesToMake[-1]:
-            if self.movesToMake[-1][0][1]:
-                self.debug("dowork: Make move")
-                self.makeMove()
-            else:
-                self.dbeug( "doWork: prune movesToMake")
-                self.movesToMake[-1] = self.movesToMake[-1][1:]
+        if not self.movesToMake:
+            print("doWork: No moves to make!")
+            self.running = False
+            self.verbose = True
+            return
+
+        if self.movesToMake:
+            self.debug("dowork: Make move")
+            self.makeMove()
         else:
             self.debug("doWork: Backtracking")
             self.backTrack()
             self.movesToMake.pop()
         self.sanityCheck()
-
 
     def backTrack(self, n = 1):
         #print("Backtrack!!!")
@@ -268,7 +298,6 @@ class Board:
             print(f"Backtrack {x} removing {coord}")
             self.coords[coord][0] = 0
 
-
     def debug(self, s):
         if self.verbose:
             print(s)
@@ -277,22 +306,14 @@ class Board:
     def makeMove(self):
         #toMove = [ x for x in self.movesToMake[-1] if len( x[1] ) == 1]
         #print(f"toMove is {pprint.pformat(toMove)}")
-        coord, moveSet = self.movesToMake[-1][0]
+        (coord, move) = self.movesToMake.pop()
 
-        assert moveSet, "Empty moveset!"
         if coord == (6,4) and self.running and False:
             print("Debug breakpoint")
             self.running = False
             self.verbose = True
             return
         
-        move = moveSet.pop()
-        if not moveSet:
-            self.movesToMake[-1] = self.movesToMake[-1][1:]
-            if not self.movesToMake[-1]:
-                self.movesToMake = self.movesToMake[:-1]
-        self.debug(f"makemove final moveset {moveSet}")
-
         # Make the actual move
         self.debug(f"makeMove {coord} -> {move}")
 
@@ -306,39 +327,51 @@ class Board:
         am = self.availableMoves()
         amCords = {x[0] for x in am}
         es = self.emptySquares()
-        # badSquares = []
-        # #self.debug(f"amCords={amCords} am={am}")
-        # for (coord2, val) in es.items():
-        #     if not coord2 in amCords:
-        #         self.debug(f"badSquare coord={coord2}")
-        #         badSquares.append(coord2)
-        # if badSquares:
-        #     print(f"Bad squares (can't move) after move {coord}->{move}\n{pprint.pformat(badSquares)}")
-
-        #     self.backTrack()
-        #     return
-
-        
 
         # Zone availability
         # Ensure that available moves for empty squares in a zone covers
         # Size of each zone
 
-        amDict = { q : v for q,v in am }
-        for zone, coords in self.zones.items():
-            impossible = board.zoneAvail(zone)
-            #print( f"Need {impossible} for zone {zone}")
-            for coord in coords:
-                impossible -= amDict.get(coord, set() )
-                self.debug( f"zoneAvail {coord}->{move} impossible={impossible}")
-            if impossible:
-                print(f"zone {zone} impossible {impossible} need {board.zoneAvail(zone)}")
-                self.backTrack()
-                return
-            
-        self.movesToMake.append(self.availableMoves())
+        if 0:
+            amDict = { q : v for q,v in am }
+            for zone, coords in self.zones.items():
+                impossible = board.zoneAvail(zone)
+                #print( f"Need {impossible} for zone {zone}")
+                for coord in coords:
+                    if coord in amDict:
+                        impossible.discard(amDict[coord])
+                    self.debug( f"zone={zone} zoneAvail {coord}->{move} impossible={impossible}")
+                if impossible:
+                    print(f"zone {zone} impossible {impossible} need {board.zoneAvail(zone)}")
+                    self.backTrack()
+                    return
+
+
+        #flatMoves = functools.reduce( lambda a,b: a+b, self.movesToMake)
+        newMoves = self.pruneMoves(self.availableMoves())
+        moveCoords = {x[0] for x in newMoves}
+        populated = [ coord for coord,value in self.coords.items() if value[0] ]
+        self.movesToMake += [ x for x in newMoves if not x[0] in moveCoords and not x[0] in populated]
+
+
+        self.populateAllowedValues()
+        
         if len(self.movesMade) == self.rows * self.cols:
             print("Yowza - solution")
+
+    def populateAllowedValues(self):
+        for q,myVal in self.coords.items():
+            myVal[4] = cp.copy(myVal[3])
+
+            # Exclude adjacents
+            for adj in self.adjacents(q):
+                otherVal = self.coords[adj]
+                if otherVal[0] != 0:
+                    myVal[4].discard(otherVal[0])
+
+            # Exclude zone occupants
+            myVal[4] -= self.zoneOccupied(myVal[1])
+                    
     
     def plot(self):
         pl.clf()
@@ -389,8 +422,7 @@ if __name__ == '__main__' or True:
     #pp(xs)
     board.plot()
 
-    
-    multIter(84)
-    board.verbose = True
+    multIter(30)
+    #board.verbose = True
     
 

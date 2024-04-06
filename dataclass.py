@@ -12,8 +12,8 @@ class Person:
     fwends: list[str] = field(default_factory=list)
 
 
-a = Person(name='andy', age=30, fwends=['chris', 'jamie'])
-b = Person(name='audrey', age=52)
+andy = Person(name='andy', age=30, fwends=['chris', 'jamie'])
+audrey = Person(name='audrey', age=52)
 
 
 def doit(x: int) -> None:
@@ -29,8 +29,10 @@ def doSplit(x: str) -> None:
             print(f"Woot {a2} {b2}")
         case [a2]:
             print(f"Toot {a2}")
+        case [a, b, c]:
+            print(f"Groot {a} {b} {c}")
         case _:
-            print("Does not compute")
+            print(f"Does not compute {x}")
 
 
 doSplit("foo,bar")

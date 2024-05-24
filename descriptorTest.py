@@ -1,7 +1,4 @@
-
-
 from abc import ABC
-
 
 class SimpleProperty:
     def __init__(self):
@@ -10,15 +7,15 @@ class SimpleProperty:
     def __set_name__(self, obj, name):
         print(f"setname self={self} obj={obj} name={name}")
         self._name = name
+        self._private_name = f"_{name}"
 
     def __get__(self, obj , b):
         print(f"get obj={obj} b={b}")
-        return obj._value
+        return getattr(obj, self._private_name)
 
     def __set__(self, obj, v, *args):
         print(f"set obj={obj}, v={v} args={args}")
-        obj._value = v
-
+        setattr(obj, self._private_name, v)
 
 class Foo:
     a = SimpleProperty()

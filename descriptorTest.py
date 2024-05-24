@@ -12,8 +12,8 @@ class SimpleProperty:
         self._name = name
 
     def __get__(self, obj , b):
-        print(f"get a={a} b={b}")
-        return self._value
+        print(f"get obj={obj} b={b}")
+        return obj._value
 
     def __set__(self, obj, v, *args):
         print(f"set obj={obj}, v={v} args={args}")
@@ -24,9 +24,14 @@ class Foo:
     a = SimpleProperty()
     b = SimpleProperty()
 
+
     def __init__(self):
-        self.a  = 10
+        self.a = 10
         self.b = 20
+        pass
+    
+        #self.a  = SimpleProperty()
+        #self.b = SimpleProperty()
 
         #self.c = 10
         #self.d = 20

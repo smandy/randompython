@@ -1,6 +1,6 @@
 import numpy as np
-import matplotlib
-matplotlib.use('qtAgg')
+#import matplotlib
+#matplotlib.use('qtAgg')
 
 # Collect historical stock price data for each stock
 stock1_prices = [10, 12, 11, 13, 15]

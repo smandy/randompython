@@ -21,17 +21,10 @@ class Foo:
     a = SimpleProperty()
     b = SimpleProperty()
 
-
     def __init__(self):
         self.a = 10
         self.b = 20
         pass
-    
-        #self.a  = SimpleProperty()
-        #self.b = SimpleProperty()
-
-        #self.c = 10
-        #self.d = 20
 
 f = Foo()
         

@@ -1,7 +1,3 @@
-
-#stryingrategy = [10] * 10
-
-
 from dataclass import dataclass
 import numpy as np
 
@@ -89,7 +85,6 @@ def findMean(strategy, verbose=False):
         results.append(len(s.attempts))
         if verbose:
             s.report()
-
         assert s.lastBad == n
     #ret = (np.mean(results), min(results), max(results))
     ret = Result(strategy, min(results), max(results), np.mean(results))
@@ -100,22 +95,27 @@ def findMean(strategy, verbose=False):
 
 best = findMean(sf(15, 15, 1))
 
-#m = findMean(bs)[0]
-#import random
-#bs = sf(15,15,1)
 
+def validStrategy(xs):
+    for a, b in zip(xs[:-1], xs[1:]):
+        if a >= b:
+            return False
+    if xs[-1] != 100:
+        return False
+    return True
 
-
-def improve(bs, inner=False):
+def improve(bs):
     current = bs
     haveBest = False
     for idx in range(0, len(current.strategy) - 1):
-        for perturbation in [-1, 1]:
-            #print((idx, perturbation,))
+        for perturbation in [-3, -2, -1, 1, 2, 3]:
             ns = bs.strategy[:]
             ns[idx] += perturbation
+            if not validStrategy(ns):
+                continue
+            #print((idx, perturbation, ns))
             r = findMean(ns)
-            if r.mean < current.mean:
+            if r.mean <= current.mean:
                 haveBest = True
                 current = r
     if haveBest:
@@ -123,16 +123,49 @@ def improve(bs, inner=False):
     else:
         return None
 
-def improveIterative(ns):
+def improve2(bs):
+    current = bs
+    haveBest = False
+    for idx in range(0, len(current.strategy) - 2):
+        for sign in [-3, -2, -1, 1, 2, -3]:
+            ns = bs.strategy[:]
+            #ns[idx] += perturbation
+            ns[idx] += sign
+            ns[idx + 1] -= sign
+
+            if not validStrategy(ns):
+                continue
+            #print((idx, perturbation, ns))
+            r = findMean(ns)
+            if r.mean <= current.mean:
+                haveBest = True
+                current = r
+    if haveBest:
+        return current
+    else:
+        return None
+
+
+def improveIterative(ns, improvers=[improve]):
     current = ns
+    history = set([tuple(current.strategy)])
     haveBest = False
     while True:
-        xs = improve(current)
+        # print(f"Iter {current} ({len(history)} {history}")
+        xs = [improver(current) for improver in improvers]
+        xs = [x for x in xs if x and not tuple(x.strategy) in history]
         if not xs:
             break
-        else:
-            if xs.mean < current.mean:
-                current = xs
+        for x in xs:
+            ts = tuple(x.strategy)
+            if ts in history:
+                continue
+            else:
+                if x.mean < current.mean or \
+                   (x.mean <= current.mean and ts not in history):
+                    history.add(ts)
+                    #print(f"History {history}")
+                    current = x
                 haveBest = True
     if haveBest:
         return current
@@ -142,14 +175,14 @@ def improveIterative(ns):
 def findGap(bs):
     currentBest = bs
     haveBest = False
-    #print(f"findgap bs={bs} allBest={allBest}")
     # Try drop
     s = bs.strategy
     for idx in range(1, len(s) - 1):
         ns = findMean(s[:idx] + s[idx + 1:])
-        m = improveIterative(ns)
+        m = improveIterative(ns, improvers=[improve, improve2])
         #print(f"ir m={m}")
-        if m and m.mean < currentBest.mean:
+        #print(f"findgap ns={ns} m={m}  currentBest={currentBest}")
+        if m and m.mean <= currentBest.mean:
             currentBest = m
             haveBest = True
     if haveBest:
@@ -158,10 +191,34 @@ def findGap(bs):
         return None
 
 
-bs = findMean(sf(15, 15, 1))
-bs = improveIterative(bs)
+def gaps(xs):
+    return [xs[0]] + [x[1] - x[0] for x in zip(xs[:-1], xs[1:])]
 
-print()
-print()
-fg = findGap(bs)
-print(f"gap is {fg}")
+def fromGaps(xs):
+    ret = []
+    count = 0
+    for x in xs:
+        count += x
+        ret.append(count)
+    return ret
+
+
+naive = findMean([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+initial = findMean(sf(15, 15, 1))
+
+
+#current = initial
+
+bs2 = improveIterative(initial, improvers=[improve, improve2])
+print(naive)
+print(initial)
+print(bs2)
+#bs = improveIterative(initial)
+#bs2 = improveIterative(bs, improver=improve2)
+#bs3 = improveIterative(initial, improver=improve2)
+#bs3 = improveIterative(bs2)
+
+#print()
+#print()
+#fg = findGap(bs2)
+#print(f"gap is {fg}")

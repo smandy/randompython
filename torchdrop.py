@@ -206,19 +206,7 @@ def fromGaps(xs):
 naive = findMean([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 initial = findMean(sf(15, 15, 1))
 
-
-#current = initial
-
 bs2 = improveIterative(initial, improvers=[improve, improve2])
 print(naive)
 print(initial)
 print(bs2)
-#bs = improveIterative(initial)
-#bs2 = improveIterative(bs, improver=improve2)
-#bs3 = improveIterative(initial, improver=improve2)
-#bs3 = improveIterative(bs2)
-
-#print()
-#print()
-#fg = findGap(bs2)
-#print(f"gap is {fg}")

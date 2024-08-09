@@ -3,14 +3,14 @@ import urllib.request, urllib.error, urllib.parse
 import urllib.request, urllib.parse, urllib.error
 
 #These are the secrets etc from Fitbit developer
-OAuthTwoClientID = "23B7K7"
-ClientOrConsumerSecret = "2e52f4e0ec078a03d28097a18692b765"
+OAuthTwoClientID = "redacted"
+ClientOrConsumerSecret = "redacted"
 
 #This is the Fitbit URL
 TokenURL = "https://api.fitbit.com/oauth2/token"
 
 #I got this from the first verifier part when authorising my application
-AuthorisationCode = "ddec633e6c46c0704b0ff7513eaa0b9ffc5ffb87"
+AuthorisationCode = "redacted"
 
 #Form the data payload
 BodyText = {'code' : AuthorisationCode,
